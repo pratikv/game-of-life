@@ -3,8 +3,16 @@ const gl = canvas.getContext("webgl");
 
 console.assert(gl != null, "Could not create gl context");
 
-var scale = 8;
-var stateSize = [512/scale, 512/scale];
+canvas.addEventListener("mousedown", function () {
+  console.log(arguments);
+})
+
+canvas.addEventListener("mouseup", function () {
+  console.log(arguments);
+})
+
+var scale = 4;
+var stateSize = [512 / scale, 512 / scale];
 
 const vsrc = `
 attribute vec2 pos;
@@ -50,14 +58,11 @@ int get(int x, int y){
 }
 
 void main(){
-  int sum = get(-1,-1) + get(-1,0) + get(-1,1) + get(0,-1) + get(0, 1) + get(1,-1) + get(1,0) + get(1,-1);
+  int sum = get(-1,-1) + get(-1,0) + get(-1,1) + get(0,-1) + get(0, 1) + get(1,-1) + get(1,0) + get(1,1);
 
   if(sum == 3){
     gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
   }
-  // else if(sum == 5){
-  //   gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-  // }
   else if( sum == 2 ){
     float current = float(get(0,0));
     gl_FragColor = vec4(current, 0.0, 0.0, 1.0);
@@ -85,21 +90,48 @@ var arrays = {
 
 const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
+function setAt(i, j, img, val) {
+  const kk = (i * stateSize[1] * 4);
+  var ii = j * 4;
+  img[kk + ii] = val;
+  img[kk + ii + 1] = 0;
+  img[kk + ii + 2] = 0;
+  img[kk + ii + 3] = 255;
+}
 
+var patters = [
+  [{ x: 2, y: 2 }, { x: 3, y: 2 }, { x: 2, y: 3 }, { x: 3, y: 3 }],
+  [{ x: 6, y: 3 }, { x: 7, y: 2 }, { x: 7, y: 4 }, { x: 9, y: 3 }, { x: 8, y: 2 }, { x: 8, y: 4 }],
+  [{ x: 14, y: 4 }, { x: 15, y: 4 }, { x: 16, y: 4 }]
+];
+
+function generateKnownImage() {
+  var img = new Uint8Array(stateSize[0] * stateSize[1] * 4);
+  for (let i = 0; i < stateSize[0]; i++) {
+    for (let j = 0; j < stateSize[1]; j++) {
+      setAt(i, j, img, 0);
+    }
+  }
+
+  // Create patterns
+  patters.forEach(pattern => {
+    pattern.forEach(pts => setAt(pts.x, pts.y, img, 255));
+  });
+
+
+  return img;
+}
 
 function generateRandomImage(p) {
   var prob = p || 0.5;
   var img = new Uint8Array(stateSize[0] * stateSize[1] * 4);
   for (let i = 0; i < stateSize[0]; i++) {
-    const kk = (i * stateSize[1] * 4);
+    //const kk = (i * stateSize[1] * 4);
     for (let j = 0; j < stateSize[1]; j++) {
-      var val = Math.random() < prob? 0 : 1;
-      var ii = j * 4;
+      var val = Math.random() < prob ? 0 : 1;
+      //var ii = j * 4;
       var fv = (val == 0 ? 0 : 255);
-      img[kk + ii] = fv;
-      img[kk + ii + 1] = 0;
-      img[kk + ii + 2] = 0;
-      img[kk + ii + 3] = 255;
+      setAt(i, j, img, fv);
     }
   }
   // var img1 = document.createElement("img");
@@ -110,10 +142,12 @@ function generateRandomImage(p) {
   return img;
 }
 
+var d1 = generateRandomImage(0.8);
+var d2 = generateKnownImage();
 
 // Create textures
-var tex1 = twgl.createTexture(gl, { src: generateRandomImage(0.9), min: gl.NEAREST, mag :gl.NEAREST });
-var tex2 = twgl.createTexture(gl, { width: stateSize[0], height: stateSize[1], min: gl.NEAREST, mag :gl.NEAREST});
+var tex1 = twgl.createTexture(gl, { src: d1, min: gl.NEAREST, mag: gl.NEAREST });
+var tex2 = twgl.createTexture(gl, { width: stateSize[0], height: stateSize[1], min: gl.NEAREST, mag: gl.NEAREST });
 
 // Create Framebuffer
 //var frameBuffer = twgl.createFramebufferInfo(gl, [{attachment : tex1}]);
@@ -126,7 +160,7 @@ function swap() {
   tex2 = temp;
 }
 
-gl.viewport(0,0,stateSize[0],stateSize[1]);
+gl.viewport(0, 0, stateSize[0], stateSize[1]);
 
 
 function render() {
@@ -136,8 +170,10 @@ function render() {
   gl.useProgram(proggol.program);
   gl.clear(gl.COLOR_BUFFER_BIT);
   twgl.setBuffersAndAttributes(gl, proggol, bufferInfo);
-  twgl.setUniforms(proggol, { state: tex1, scale : [stateSize[0],stateSize[1]] });
+  twgl.setUniforms(proggol, { state: tex1, scale: [stateSize[0], stateSize[1]] });
   twgl.drawBufferInfo(gl, bufferInfo);
+
+  // Clear the framebuffer. Output to the default canvas
   twgl.bindFramebufferInfo(gl);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.useProgram(prog2.program);

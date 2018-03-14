@@ -1,7 +1,7 @@
 {
-  "name": "app3",
+  "name": "game-of-life",
   "version": "1.0.0",
-  "description": "Testing for Game Of Life",
+  "description": "Testing for Conway's Game Of Life",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
